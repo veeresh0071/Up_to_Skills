@@ -1,0 +1,207 @@
+const pool = require('../config/database');
+const { fetchExternal, fetchInternal } = require('../utils/apiClient');
+const fs = require('fs');
+const path = require('path');
+const { createEnrollment, isStudentEnrolledInCourse } = require('./enrollmentController');
+
+// Flip this on temporarily if you need to see the enrollment failures again.
+const programEnrollmentLogsEnabled = false;
+
+const buildCourseLookupVariants = (value = '') => {
+  const raw = (value || '').toString().trim();
+  if (!raw) return [];
+
+  const lower = raw.toLowerCase();
+  const spaced = lower.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const hyphenated = spaced.replace(/\s+/g, '-');
+
+  return Array.from(new Set([lower, spaced, hyphenated])).filter(Boolean);
+};
+
+const findCourseByInput = async (rawCourse) => {
+  const variants = buildCourseLookupVariants(rawCourse);
+  if (!variants.length) return null;
+
+  const { rows } = await pool.query(
+    `SELECT id, title FROM courses WHERE LOWER(title) = ANY($1::text[]) LIMIT 1`,
+    [variants]
+  );
+
+  return rows[0] || null;
+};
+
+const createProgram = async (req, res) => {
+  const { name, email, phone, education, programexp, course,date,time } = req.body;
+
+  if (!name || !email || !phone || !education || !programexp || !course) {
+    return res.status(400).json({ success: false, message: 'All fields are required' });
+  }
+
+  if (req.file && req.file.mimetype !== 'application/pdf') {
+    return res.status(400).json({ success: false, message: 'Please upload a PDF resume' });
+  }
+  // pool.query('ALTER TABLE programs ADD COLUMN IF NOT EXISTS date TEXT', (err) => {
+  //   if (err) throw err; // Handle the error appropriately.
+  // });
+  // pool.query('ALTER TABLE programs ADD COLUMN IF NOT EXISTS time TEXT', (err) => {
+  //   if (err) throw err; // Handle the error appropriately.
+  // });
+
+  let resumePath = null;
+  if (req.file?.buffer) {
+    try {
+      const uploadDir = path.join(__dirname, '../uploads');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      const diskName = Date.now() + '-' + (req.file.originalname || 'resume.pdf');
+      resumePath = path.join(uploadDir, diskName);
+      fs.writeFileSync(resumePath, req.file.buffer);
+    } catch (e) {
+      console.warn('Could not write uploaded resume to disk:', e.message);
+    }
+  }
+
+  try {
+    // Create program application
+    const result = await pool.query(
+      `INSERT INTO programs (name, email, phone, education, programexp, course, resume_path, resume_data, resume_mime, resume_filename,date,time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,$11,$12) RETURNING *`,
+      [name, email, phone, education, programexp, course, resumePath, req.file?.buffer || null, req.file?.mimetype || null, req.file?.originalname || null,date,time]
+    );
+
+    // console.log('Program application created:', result.rows[0]);
+
+    // Now create enrollment record
+    try {
+      // console.log('=== STARTING ENROLLMENT PROCESS ===');
+      // console.log('Course title from form:', course);
+      
+      // Find course by title or slug-equivalent
+      const courseRecord = await findCourseByInput(course);
+      // console.log('Course search result:', courseRecord);
+      
+      if (courseRecord) {
+        const courseId = courseRecord.id;
+        // console.log('✅ Found course ID:', courseId, 'for title:', courseRecord.title);
+
+        // Find or create student by email
+        let studentResult = await pool.query('SELECT id, full_name, email FROM students WHERE email = $1', [email]);
+        let studentId;
+
+        if (studentResult.rows.length === 0) {
+          // Create new student record
+          // console.log('📝 Creating new student for email:', email);
+          const newStudentResult = await pool.query(
+            'INSERT INTO students (full_name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING id',
+            [name, email, phone, 'temp_password_' + Date.now()]
+          );
+          studentId = newStudentResult.rows[0].id;
+          // console.log('✅ Created new student with ID:', studentId);
+        } else {
+          studentId = studentResult.rows[0].id;
+          // console.log('✅ Found existing student with ID:', studentId, 'email:', studentResult.rows[0].email);
+        }
+
+        // Create enrollment
+        // console.log('📚 Creating enrollment for student:', studentId, 'course:', courseId);
+        const enrollment = await createEnrollment(studentId, courseId, 'active', {
+          io: req.app?.get('io'),
+          actorRole: 'program_form',
+          actorId: studentId,
+        });
+        // console.log('✅ ENROLLMENT CREATED SUCCESSFULLY:', enrollment);
+
+        res.json({ 
+          success: true, 
+          data: result.rows[0],
+          enrollment: enrollment,
+          message: 'Program application and enrollment created successfully'
+        });
+      } else {
+        // console.log('❌ Course not found for title:', course);
+        // console.log('Checking all available courses...');
+        const allCourses = await pool.query('SELECT id, title FROM courses LIMIT 10');
+        // console.log('Available courses:', allCourses.rows);
+        
+        res.json({ 
+          success: true, 
+          data: result.rows[0],
+          message: 'Program application created, but course not found for enrollment',
+          debug: {
+            searchedFor: course,
+            availableCourses: allCourses.rows
+          }
+        });
+      }
+    } catch (enrollmentError) {
+      if (programEnrollmentLogsEnabled) {
+        console.error('❌ ENROLLMENT CREATION FAILED:', enrollmentError);
+        console.error('Error stack:', enrollmentError.stack);
+      }
+      // Still return success for program creation even if enrollment fails
+      res.json({ 
+        success: true, 
+        data: result.rows[0],
+        message: 'Program application created, but enrollment failed: ' + enrollmentError.message,
+        error: enrollmentError.message
+      });
+    }
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+const checkDuplicateProgramEnrollment = async (req, res) => {
+  try {
+    const { email, course } = req.body || {};
+
+    if (!email || !course) {
+      return res.status(400).json({ success: false, message: 'Email and course are required' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const studentResult = await pool.query('SELECT id FROM students WHERE LOWER(email) = $1', [normalizedEmail]);
+
+    if (studentResult.rows.length === 0) {
+      return res.json({ success: true, enrolled: false, reason: 'student_not_found' });
+    }
+
+    const courseRecord = await findCourseByInput(course);
+
+    if (!courseRecord) {
+      return res.json({ success: true, enrolled: false, reason: 'course_not_found' });
+    }
+
+    const isEnrolled = await isStudentEnrolledInCourse(studentResult.rows[0].id, courseRecord.id);
+    return res.json({ success: true, enrolled: isEnrolled });
+  } catch (error) {
+    console.error('Program duplicate check failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to check enrollment right now' });
+  }
+};
+
+const getPrograms = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM programs ORDER BY created_at DESC');
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+const getProgramById = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM programs WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Program not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+};
+
+module.exports = { createProgram, getPrograms, getProgramById, checkDuplicateProgramEnrollment };

@@ -1,0 +1,89 @@
+/* ------------------------------
+   🌟 Main Badge Form Container
+------------------------------ */
+.badge-form-container {
+  max-width: 500px; /* Set max width for clean centered layout */
+  margin: 40px auto; /* Center horizontally with top spacing */
+  padding: 24px; /* Internal spacing */
+  background-color: #ffffff; /* White card background */
+  border-radius: 12px; /* Smooth rounded corners */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Soft shadow for depth */
+  font-family: 'Segoe UI', sans-serif; /* Clean modern font */
+}
+
+/* ------------------------------
+   🏷️ Form Heading Style
+------------------------------ */
+.badge-form-container h2 {
+  margin-bottom: 24px; /* Spacing below title */
+  font-size: 24px; /* Larger font for heading */
+  text-align: center; /* Center the heading */
+  color: #333; /* Dark text for readability */
+}
+
+/* ------------------------------
+   🧩 Form Layout (Vertical)
+------------------------------ */
+.badge-form {
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  gap: 16px; /* Space between fields */
+}
+
+/* ------------------------------
+   📝 Label Styling
+------------------------------ */
+.badge-form label {
+  font-size: 14px; /* Slightly smaller label text */
+  color: #333; /* Dark gray for good contrast */
+  font-weight: 500; /* Medium weight for readability */
+  display: flex;
+  flex-direction: column; /* Label + input stacked */
+}
+
+/* ------------------------------
+   ✏️ Input & Textarea Styling
+------------------------------ */
+.badge-form input[type='text'],
+.badge-form input[type='number'],
+.badge-form textarea {
+  padding: 10px; /* Comfortable typing space */
+  border: 1px solid #ccc; /* Light border */
+  border-radius: 6px; /* Smooth corners */
+  margin-top: 4px; /* Space between label and input */
+  font-size: 14px; /* Balanced input text size */
+}
+
+/* Allow vertical resizing for text area */
+.badge-form textarea {
+  resize: vertical;
+  min-height: 80px; /* Minimum reasonable height */
+}
+
+/* ------------------------------
+   ☑️ Checkbox Row Styling
+------------------------------ */
+.checkbox-label {
+  flex-direction: row; /* Align checkbox + text horizontally */
+  align-items: center; /* Vertically align center */
+  gap: 10px; /* Space between checkbox and label text */
+}
+
+/* ------------------------------
+   🔘 Submit Button Styling
+------------------------------ */
+.badge-form button {
+  background-color: #007bff; /* Primary blue button */
+  color: white; /* White text */
+  padding: 10px 0; /* Vertical padding */
+  font-size: 16px; /* Clear readable size */
+  border: none; /* No border */
+  border-radius: 6px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background 0.2s ease; /* Smooth hover transition */
+}
+
+/* Hover effect for button */
+.badge-form button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}

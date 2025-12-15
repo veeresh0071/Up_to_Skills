@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 220 9% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 9% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 9% 20%;
+    --primary: 214 84% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 25 95% 53%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 13% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 214 32% 91%;
+    --accent-foreground: 214 84% 56%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 214 84% 56%;
+
+    --sidebar-primary-foreground: 240 5.3% 26.1%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 6%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 6%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    /* Sidebar (Dark) */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* ==== Stat Card ==== */
+  .stat-card {
+    @apply bg-card border border-border rounded-xl p-6 transition-all;
+    box-shadow: 0 4px 12px hsl(var(--border) / 0.3);
+  }
+
+.stat-card:hover {
+  box-shadow:
+    0 4px 20px hsl(var(--primary) / 0.3),
+    0 0 15px hsl(var(--primary-glow) / 0.4),
+    var(--shadow-glow);
+  transform: scale(1.03) translateY(-4px);
+
+  
+  border: 2px solid;
+  border-image: linear-gradient(to right, orange 50%, hsl(var(--primary)) 50%, hsl(var(--primary)) 100%);
+  border-image-slice: 1;
+}
+  
+/* Ensure Sonner toasts appear below the fixed header (navbar) */
+/* Sonner's markup may vary across versions; target common attributes/classes */
+
+/* Broad selectors to catch Sonner-generated roots and containers */
+[data-sonner],
+[data-sonner-root],
+[data-sonner-id],
+[class*="sonner"],
+.sonner,
+.sonner-root,
+.sonner_toaster,
+.sonner-toaster,
+.sonner-toast,
+.sonner__toast,
+.sonner__container,
+.sonner__root,
+#sonner-root {
+  /* align toasts visually under the header and inset from the right edge */
+  top: 64px !important; /* matches navbar height */
+  right: 24px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: auto !important;
+  z-index: 45 !important; /* below navbar (navbar is z-[9999]) */
+}
+
+/* Ensure any inner toast wrapper also respects the top offset */
+[data-sonner] *,
+[data-sonner-root] *,
+[class*="sonner"] * {
+  top: unset !important;
+}
+
+/* Final fallback: hide Sonner containers entirely so toasts are not visible */
+[data-sonner],
+[data-sonner-root],
+[class*="sonner"],
+.sonner,
+.sonner-root,
+.sonner_toaster,
+.sonner-toaster,
+.sonner-toast,
+.sonner__toast,
+.sonner__container,
+.sonner__root,
+#sonner-root {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  pointer-events: none !important;
+}
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 text-sidebar-foreground rounded-lg transition-all;
+  }
+
+  .sidebar-item:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+
+  .sidebar-item.active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground;
+  }
+}
+
+
+/* Remove default browser eye icon completely (Chrome / Edge) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
+
+/* Remove default eye icon (Webkit – Chrome/Safari/Brave/Opera) */
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-password-toggle-button {
+  display: none !important;
+}

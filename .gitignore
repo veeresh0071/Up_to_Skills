@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+build/
+
+# misc
+.env
+backend/.env
+.DS_Store
+.vscode/
+.idea
+
+#unwanted files
+backend/console.log(hash))
+backend/node
+bun.lockb
+mydata.session.sql
+uptoskill_connect.session.sql
+
+# python virtual environments
+.venv/
+
+# editor history
+.history/
