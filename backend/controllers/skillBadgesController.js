@@ -14,6 +14,10 @@ const addSkillBadge = async (req, res) => {
     try {
         // Trim whitespace and normalize spacing for consistent comparisons
         const trimmedName = student_name.trim().replace(/\s+/g, ' ');
+        
+        console.log('🔍 [Badge Assignment] Searching for student:', JSON.stringify(trimmedName));
+        console.log('🔍 [Badge Assignment] Name length:', trimmedName.length);
+        console.log('🔍 [Badge Assignment] Name char codes:', [...trimmedName].map(c => c.charCodeAt(0)));
 
         const studentResult = await pool.query(
             `SELECT s.id,
@@ -25,20 +29,34 @@ const addSkillBadge = async (req, res) => {
                 OR LOWER(TRIM(COALESCE(u.full_name, ''))) = LOWER($1)`,
             [trimmedName]
         );
+        
+        console.log('🔍 [Badge Assignment] Exact match found:', studentResult.rows.length, 'students');
 
         if (studentResult.rows.length === 0) {
+            // Log all students for debugging
+            const allStudents = await pool.query(
+                `SELECT s.id, s.full_name as s_name, u.full_name as u_name,
+                        COALESCE(u.full_name, s.full_name, s.username) AS display_name
+                 FROM students s
+                 LEFT JOIN user_details u ON s.id = u.student_id
+                 ORDER BY s.id DESC LIMIT 10`
+            );
+            console.log('🔍 [Badge Assignment] Recent students in DB:', allStudents.rows);
+            
             // Try partial match as fallback to suggest possible students
-                const partialResult = await pool.query(
-                     `SELECT s.id,
-                                COALESCE(u.full_name, s.full_name, s.username) AS full_name
-                      FROM students s
-                      LEFT JOIN user_details u ON s.id = u.student_id
-                      WHERE LOWER(COALESCE(u.full_name, s.full_name, s.username)) LIKE LOWER($1)
-                          OR LOWER(COALESCE(s.full_name, '')) LIKE LOWER($1)
-                          OR LOWER(COALESCE(u.full_name, '')) LIKE LOWER($1)
-                      LIMIT 5`,
+            const partialResult = await pool.query(
+                `SELECT s.id,
+                        COALESCE(u.full_name, s.full_name, s.username) AS full_name
+                 FROM students s
+                 LEFT JOIN user_details u ON s.id = u.student_id
+                 WHERE LOWER(COALESCE(u.full_name, s.full_name, s.username)) LIKE LOWER($1)
+                    OR LOWER(COALESCE(s.full_name, '')) LIKE LOWER($1)
+                    OR LOWER(COALESCE(u.full_name, '')) LIKE LOWER($1)
+                 LIMIT 5`,
                 [`%${trimmedName}%`]
             );
+            
+            console.log('🔍 [Badge Assignment] Partial match results:', partialResult.rows);
             
             if (partialResult.rows.length > 0) {
                 const suggestions = partialResult.rows.map(r => r.full_name).join(', ');
